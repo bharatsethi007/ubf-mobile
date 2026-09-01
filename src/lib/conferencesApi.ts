@@ -147,6 +147,30 @@ export function dayLabel(dateISO: string): string {
   return `${days[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`
 }
 
+function localISO(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+export function conferenceDays(startISO: string, endISO: string): string[] {
+  const out: string[] = []
+  const cur = new Date(`${startISO}T00:00:00`)
+  const end = new Date(`${endISO}T00:00:00`)
+  while (cur <= end) {
+    out.push(localISO(cur))
+    cur.setDate(cur.getDate() + 1)
+  }
+  return out
+}
+
+export function defaultActiveDay(startISO: string, endISO: string): string {
+  const days = conferenceDays(startISO, endISO)
+  const today = localISO(new Date())
+  return days.includes(today) ? today : days[0]
+}
+
 export async function listConferenceMeetings(conferenceId: string): Promise<ConferenceMeeting[]> {
   const { data, error } = await supabase
     .from('conference_meetings')

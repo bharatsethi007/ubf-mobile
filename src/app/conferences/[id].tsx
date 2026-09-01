@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Image } from 'expo-image'
 
 import { AppHeader, Avatar, Badge, Card, Screen, Text } from '@/components/kit'
 import { colors, radius, spacing } from '@/theme'
 import {
-  dayLabel,
+  conferenceDays,
+  defaultActiveDay,
   fetchConference,
   formatDateRange,
   hhmm,
@@ -23,11 +24,18 @@ const STATUS_TONE: Record<MeetingStatus, { label: string; tone: 'muted' | 'succe
   no_show: { label: 'No-show', tone: 'warning' },
 }
 
+function pillLabel(dateISO: string): string {
+  const d = new Date(`${dateISO}T00:00:00`)
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  return `${days[d.getDay()]}\n${d.getDate()}`
+}
+
 export default function ConferenceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
   const [conf, setConf] = useState<ConferenceCard | null>(null)
   const [meetings, setMeetings] = useState<ConferenceMeeting[]>([])
+  const [day, setDay] = useState<string>('')
   const [loading, setLoading] = useState(true)
 
   useFocusEffect(
@@ -39,6 +47,7 @@ export default function ConferenceDetailScreen() {
           if (!active) return
           setConf(c)
           setMeetings(m)
+          if (c) setDay((prev) => prev || defaultActiveDay(c.start_date, c.end_date))
         })
         .catch(() => {})
         .finally(() => {
@@ -50,13 +59,9 @@ export default function ConferenceDetailScreen() {
     }, [id]),
   )
 
-  // group meetings by day
-  const byDay: { day: string; rows: ConferenceMeeting[] }[] = []
-  for (const m of meetings) {
-    const last = byDay[byDay.length - 1]
-    if (last && last.day === m.meeting_date) last.rows.push(m)
-    else byDay.push({ day: m.meeting_date, rows: [m] })
-  }
+  const days = conf ? conferenceDays(conf.start_date, conf.end_date) : []
+  const todayISO = new Date().toISOString().slice(0, 10)
+  const dayMeetings = meetings.filter((m) => m.meeting_date === day)
 
   return (
     <Screen>
@@ -71,47 +76,56 @@ export default function ConferenceDetailScreen() {
           <Text variant="muted">Conference not found.</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingTop: spacing.sm, gap: spacing.xl }}>
-          {/* summary */}
-          <Card padded={false}>
-            <View style={{ height: 150, backgroundColor: colors.navy }}>
-              {conf.cover_image_url ? (
-                <Image
-                  source={{ uri: conf.cover_image_url }}
-                  style={{ width: '100%', height: '100%' }}
-                  contentFit="cover"
-                  transition={250}
-                />
-              ) : null}
-            </View>
-            <View style={{ padding: spacing.lg, gap: spacing.sm, flexDirection: 'row', flexWrap: 'wrap' }}>
+        <>
+          {/* Day selector */}
+          <View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.dayBar}
+            >
+              {days.map((d, i) => {
+                const selected = d === day
+                const isToday = d === todayISO
+                return (
+                  <Pressable
+                    key={d}
+                    onPress={() => setDay(d)}
+                    style={[styles.dayPill, selected && styles.dayPillOn]}
+                  >
+                    <Text style={[styles.dayPillDow, selected && styles.dayPillTextOn]}>
+                      {pillLabel(d).split('\n')[0]}
+                    </Text>
+                    <Text style={[styles.dayPillNum, selected && styles.dayPillTextOn]}>
+                      {pillLabel(d).split('\n')[1]}
+                    </Text>
+                    {isToday ? <View style={[styles.todayDot, selected && styles.todayDotOn]} /> : null}
+                    <Text style={[styles.dayPillIdx, selected && styles.dayPillTextOn]}>Day {i + 1}</Text>
+                  </Pressable>
+                )
+              })}
+            </ScrollView>
+          </View>
+
+          <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingTop: spacing.md, gap: spacing.md }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.xs }}>
               {conf.network_code ? <Badge label={conf.network_code} tone="navy" /> : null}
               <Badge label={formatDateRange(conf.start_date, conf.end_date)} tone="muted" />
-              <Badge label={`${meetings.length} ${meetings.length === 1 ? 'agent' : 'agents'}`} tone="orange" />
+              <Badge
+                label={`${dayMeetings.length} ${dayMeetings.length === 1 ? 'agent' : 'agents'}`}
+                tone="orange"
+              />
             </View>
-          </Card>
 
-          {/* agents / meetings */}
-          <View style={{ gap: spacing.lg }}>
-            <Text variant="label">Agents</Text>
-            {byDay.length === 0 ? (
+            {dayMeetings.length === 0 ? (
               <Card>
-                <Text variant="muted">No meetings scheduled yet.</Text>
+                <Text variant="muted">No meetings scheduled for this day.</Text>
               </Card>
             ) : (
-              byDay.map((group) => (
-                <View key={group.day} style={{ gap: spacing.md }}>
-                  <Text variant="subtitle">{dayLabel(group.day)}</Text>
-                  <View style={{ gap: spacing.md }}>
-                    {group.rows.map((m) => (
-                      <MeetingRow key={m.id} m={m} />
-                    ))}
-                  </View>
-                </View>
-              ))
+              dayMeetings.map((m) => <MeetingRow key={m.id} m={m} />)
             )}
-          </View>
-        </ScrollView>
+          </ScrollView>
+        </>
       )}
     </Screen>
   )
@@ -140,7 +154,7 @@ function MeetingRow({ m }: { m: ConferenceMeeting }) {
         <View style={styles.divider} />
         <Avatar label={name} size={38} />
         <View style={{ flex: 1 }}>
-          <Text variant="heading" numberOfLines={1}>
+          <Text style={styles.agentName} numberOfLines={1}>
             {name}
           </Text>
         </View>
@@ -151,10 +165,31 @@ function MeetingRow({ m }: { m: ConferenceMeeting }) {
 }
 
 const styles = StyleSheet.create({
+  dayBar: { paddingHorizontal: spacing.xl, paddingVertical: spacing.sm, gap: spacing.sm },
+  dayPill: {
+    width: 58,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    gap: 1,
+  },
+  dayPillOn: { backgroundColor: colors.navy, borderColor: colors.navy },
+  dayPillDow: { fontSize: 11, fontWeight: '600', color: colors.textMuted, textTransform: 'uppercase' },
+  dayPillNum: { fontSize: 18, fontWeight: '800', color: colors.ink },
+  dayPillIdx: { fontSize: 9, fontWeight: '700', color: colors.textSubtle, textTransform: 'uppercase', letterSpacing: 0.4 },
+  dayPillTextOn: { color: '#fff' },
+  todayDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.orange },
+  todayDotOn: { backgroundColor: '#fff' },
+
   meetingInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
   timeCol: { width: 44, alignItems: 'center' },
   timeText: { fontSize: 15, fontWeight: '700', color: colors.navy },
   divider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: colors.border },
+  agentName: { fontSize: 16, fontWeight: '500', color: colors.ink },
   breakRow: {
     flexDirection: 'row',
     alignItems: 'center',
