@@ -1,13 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Modal,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native'
+import { ActivityIndicator, Alert, Animated, Modal, Pressable, StyleSheet, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import {
   RecordingPresets,
@@ -49,7 +41,6 @@ export default function MeetingRecorder({
 
   const recSec = Math.floor((state.durationMillis ?? 0) / 1000)
   const level = Math.max(0, Math.min(1, ((state.metering ?? -60) + 60) / 60))
-  const open = phase !== 'idle'
 
   const clearGrace = () => {
     if (graceTimer.current) clearInterval(graceTimer.current)
@@ -74,7 +65,6 @@ export default function MeetingRecorder({
     }
   }, [recorder, meetingId, onTranscribed])
 
-  // auto-pause at 17 min of recorded time
   useEffect(() => {
     if (phase === 'recording' && recSec >= nextPause.current) {
       recorder.pause()
@@ -119,175 +109,114 @@ export default function MeetingRecorder({
     setPhase('recording')
   }
 
+  if (phase === 'idle') {
+    return <IconButton name="mic-outline" onPress={() => void start()} />
+  }
+
+  if (phase === 'processing') {
+    return (
+      <View style={styles.inline}>
+        <ActivityIndicator size="small" color={colors.navy} />
+        <Text variant="small" style={{ color: colors.navy, fontWeight: '600' }}>
+          Transcribing…
+        </Text>
+      </View>
+    )
+  }
+
   return (
     <>
-      <IconButton name="mic-outline" onPress={() => void start()} />
+      <View style={styles.inline}>
+        <MiniOrb level={level} active={phase === 'recording'} />
+        <Text style={styles.timer}>{fmt(recSec)}</Text>
+        <Pressable
+          onPress={() => void finalize()}
+          hitSlop={8}
+          style={({ pressed }) => [styles.stop, pressed && { opacity: 0.8 }]}
+        >
+          <View style={styles.stopSquare} />
+        </Pressable>
+      </View>
 
-      <Modal visible={open} animationType="fade" transparent={false} onRequestClose={() => {}}>
-        <View style={styles.stage}>
-          {phase === 'processing' ? (
-            <View style={styles.center}>
-              <ActivityIndicator color="#fff" size="large" />
-              <Text style={styles.processing}>Transcribing…</Text>
-              <Text style={styles.processingSub}>Deepgram + Claude are writing your summary</Text>
-            </View>
-          ) : (
-            <>
-              <View style={styles.center}>
-                <Orb level={level} active={phase === 'recording'} />
-                <Text style={styles.timer}>{fmt(recSec)}</Text>
-                <Text style={styles.hint}>
-                  {phase === 'paused' ? 'Paused' : 'Recording — tap stop when done'}
-                </Text>
-              </View>
-
+      <Modal visible={phase === 'paused'} transparent animationType="fade" onRequestClose={() => {}}>
+        <View style={styles.promptWrap}>
+          <View style={styles.prompt}>
+            <Text style={styles.promptTitle}>Still recording?</Text>
+            <Text style={styles.promptBody}>
+              Paused at {fmt(recSec)}. It stops and transcribes automatically in {fmt(grace)}.
+            </Text>
+            <View style={styles.promptRow}>
               <Pressable
                 onPress={() => void finalize()}
-                style={({ pressed }) => [styles.stopBtn, pressed && { opacity: 0.85 }]}
+                style={({ pressed }) => [styles.promptBtn, pressed && { opacity: 0.7 }]}
               >
-                <View style={styles.stopSquare} />
-                <Text style={styles.stopText}>Stop &amp; transcribe</Text>
+                <Text style={styles.promptBtnText}>Stop</Text>
               </Pressable>
-            </>
-          )}
-
-          {phase === 'paused' ? (
-            <View style={styles.promptWrap}>
-              <View style={styles.prompt}>
-                <Text style={styles.promptTitle}>Still recording?</Text>
-                <Text style={styles.promptBody}>
-                  Paused at {fmt(recSec)}. It stops and transcribes automatically in {fmt(grace)}.
-                </Text>
-                <View style={styles.promptRow}>
-                  <Pressable
-                    onPress={() => void finalize()}
-                    style={({ pressed }) => [styles.promptBtn, pressed && { opacity: 0.7 }]}
-                  >
-                    <Text style={styles.promptBtnText}>Stop</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={resume}
-                    style={({ pressed }) => [styles.promptBtnPrimary, pressed && { opacity: 0.85 }]}
-                  >
-                    <Text style={styles.promptBtnPrimaryText}>Continue</Text>
-                  </Pressable>
-                </View>
-              </View>
+              <Pressable
+                onPress={resume}
+                style={({ pressed }) => [styles.promptBtnPrimary, pressed && { opacity: 0.85 }]}
+              >
+                <Text style={styles.promptBtnPrimaryText}>Continue</Text>
+              </Pressable>
             </View>
-          ) : null}
+          </View>
         </View>
       </Modal>
     </>
   )
 }
 
-function Orb({ level, active }: { level: number; active: boolean }) {
-  const ripple1 = useRef(new Animated.Value(0)).current
-  const ripple2 = useRef(new Animated.Value(0)).current
-
+function MiniOrb({ level, active }: { level: number; active: boolean }) {
+  const ring = useRef(new Animated.Value(0)).current
   useEffect(() => {
     if (!active) return
-    const mk = (v: Animated.Value, delay: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(v, { toValue: 1, duration: 2200, useNativeDriver: true }),
-        ]),
-      )
-    const a = mk(ripple1, 0)
-    const b = mk(ripple2, 1100)
-    a.start()
-    b.start()
+    const loop = Animated.loop(
+      Animated.timing(ring, { toValue: 1, duration: 1600, useNativeDriver: true }),
+    )
+    loop.start()
     return () => {
-      a.stop()
-      b.stop()
-      ripple1.setValue(0)
-      ripple2.setValue(0)
+      loop.stop()
+      ring.setValue(0)
     }
-  }, [active, ripple1, ripple2])
+  }, [active, ring])
 
-  const ampScale = 1 + level * 0.55
-
-  const rippleStyle = (v: Animated.Value) => ({
-    transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 2.6] }) }],
-    opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.45, 0] }),
-  })
+  const scale = 1 + level * 0.35
+  const ringStyle = {
+    transform: [{ scale: ring.interpolate({ inputRange: [0, 1], outputRange: [1, 2.1] }) }],
+    opacity: ring.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }),
+  }
 
   return (
     <View style={styles.orbArea}>
-      <Animated.View style={[styles.ripple, rippleStyle(ripple1)]} />
-      <Animated.View style={[styles.ripple, rippleStyle(ripple2)]} />
-      <View style={[styles.amp, { transform: [{ scale: ampScale }] }]} />
-      <View style={styles.core}>
-        <Ionicons name="mic" size={40} color="#fff" />
-      </View>
+      <Animated.View style={[styles.orbRing, ringStyle]} />
+      <View style={[styles.orbCore, { transform: [{ scale }] }, !active && styles.orbCoreIdle]} />
     </View>
   )
 }
 
-const ORB = 132
+const ORB = 12
 
 const styles = StyleSheet.create({
-  stage: {
-    flex: 1,
-    backgroundColor: '#060B1E',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 96,
-    paddingHorizontal: spacing.xl,
-  },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg },
+  inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  timer: { fontSize: 15, fontWeight: '700', color: colors.ink, fontVariant: ['tabular-nums'], minWidth: 40 },
 
-  orbArea: { width: ORB * 2.6, height: ORB * 2.6, alignItems: 'center', justifyContent: 'center' },
-  ripple: {
-    position: 'absolute',
-    width: ORB,
-    height: ORB,
-    borderRadius: ORB / 2,
-    backgroundColor: '#3B5BDB',
-  },
-  amp: {
-    position: 'absolute',
-    width: ORB + 24,
-    height: ORB + 24,
-    borderRadius: (ORB + 24) / 2,
-    backgroundColor: 'rgba(59,91,219,0.35)',
-  },
-  core: {
-    width: ORB,
-    height: ORB,
-    borderRadius: ORB / 2,
-    backgroundColor: colors.navy,
+  orbArea: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
+  orbRing: { position: 'absolute', width: ORB, height: ORB, borderRadius: ORB / 2, backgroundColor: '#3B5BDB' },
+  orbCore: { width: ORB, height: ORB, borderRadius: ORB / 2, backgroundColor: '#EF4444' },
+  orbCoreIdle: { backgroundColor: colors.textSubtle },
+
+  stop: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#EF4444',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.15)',
   },
-
-  timer: { color: '#fff', fontSize: 44, fontWeight: '800', letterSpacing: 1, fontVariant: ['tabular-nums'] },
-  hint: { color: 'rgba(255,255,255,0.6)', fontSize: 14 },
-
-  processing: { color: '#fff', fontSize: 20, fontWeight: '700', marginTop: spacing.lg },
-  processingSub: { color: 'rgba(255,255,255,0.6)', fontSize: 14, marginTop: spacing.xs, textAlign: 'center' },
-
-  stopBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: '#EF4444',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xxl,
-    borderRadius: radius.pill,
-  },
-  stopSquare: { width: 14, height: 14, borderRadius: 3, backgroundColor: '#fff' },
-  stopText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  stopSquare: { width: 10, height: 10, borderRadius: 2, backgroundColor: '#fff' },
 
   promptWrap: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
