@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Image } from 'expo-image'
 
@@ -122,7 +122,17 @@ export default function ConferenceDetailScreen() {
                 <Text variant="muted">No meetings scheduled for this day.</Text>
               </Card>
             ) : (
-              dayMeetings.map((m) => <MeetingRow key={m.id} m={m} />)
+              dayMeetings.map((m) => (
+                <MeetingRow
+                  key={m.id}
+                  m={m}
+                  onPress={() =>
+                    router.push(
+                      `/meeting/${m.id}?name=${encodeURIComponent(m.agent_name ?? 'Agent')}&start=${m.start_time}&end=${m.end_time}` as Href,
+                    )
+                  }
+                />
+              ))
             )}
           </ScrollView>
         </>
@@ -131,7 +141,7 @@ export default function ConferenceDetailScreen() {
   )
 }
 
-function MeetingRow({ m }: { m: ConferenceMeeting }) {
+function MeetingRow({ m, onPress }: { m: ConferenceMeeting; onPress: () => void }) {
   if (m.is_break) {
     return (
       <View style={styles.breakRow}>
@@ -145,7 +155,7 @@ function MeetingRow({ m }: { m: ConferenceMeeting }) {
   const s = STATUS_TONE[m.status]
   const name = m.agent_name ?? 'Unassigned'
   return (
-    <Card padded={false}>
+    <Card padded={false} onPress={onPress}>
       <View style={styles.meetingInner}>
         <View style={styles.timeCol}>
           <Text style={styles.timeText}>{hhmm(m.start_time)}</Text>
