@@ -16,6 +16,7 @@ import { AppHeader, Card, Screen, Text } from '@/components/kit'
 import { colors, radius, spacing } from '@/theme'
 import { hhmm } from '@/lib/conferencesApi'
 import MeetingPhotos from '@/components/MeetingPhotos'
+import MeetingRecorder from '@/components/MeetingRecorder'
 import {
   LARGE_FIELDS,
   fetchMeetingNotes,
@@ -99,6 +100,16 @@ export default function MeetingScreen() {
     update([...fields, { id: newId(), label: '', value: '' }])
   }
 
+  const reloadNotes = useCallback(() => {
+    fetchMeetingNotes(mid)
+      .then((f) => {
+        setFields(f)
+        savedJson.current = JSON.stringify(f)
+        setStatus('saved')
+      })
+      .catch(() => {})
+  }, [mid])
+
   const statusText = status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : ''
 
   return (
@@ -107,7 +118,12 @@ export default function MeetingScreen() {
         title={name}
         subtitle={timeLabel}
         onBack={() => router.back()}
-        right={statusText ? <Text variant="small">{statusText}</Text> : undefined}
+        right={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            {statusText ? <Text variant="small">{statusText}</Text> : null}
+            <MeetingRecorder meetingId={mid} onTranscribed={reloadNotes} />
+          </View>
+        }
       />
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
