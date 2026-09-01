@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { AppHeader, Card, Screen, Text } from '@/components/kit'
 import { colors, radius, spacing } from '@/theme'
 import { hhmm } from '@/lib/conferencesApi'
+import MeetingPhotos from '@/components/MeetingPhotos'
 import {
   LARGE_FIELDS,
   fetchMeetingNotes,
@@ -158,6 +159,8 @@ export default function MeetingScreen() {
                 Add field
               </Text>
             </Pressable>
+
+            <MeetingPhotos meetingId={mid} />
           </ScrollView>
         </KeyboardAvoidingView>
       )}

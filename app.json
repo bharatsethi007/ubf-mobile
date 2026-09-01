@@ -1,4 +1,4 @@
-﻿{
+{
   "expo": {
     "name": "ubf-mobile",
     "slug": "ubf-mobile",
@@ -32,6 +32,19 @@
           "backgroundColor": "#208AEF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "UBF uses your photos to attach them to agent meetings.",
+          "cameraPermission": "UBF uses the camera to photograph business cards and meeting moments."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "UBF uses the microphone to record and transcribe agent meetings."
         }
       ]
     ],
