@@ -1,60 +1,30 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-
 import { useAuth } from '@/lib/auth'
-
-const NAVY = '#0A2472'
+import { AppHeader, Badge, Button, Card, Screen, Text } from '@/components/kit'
+import { colors, spacing } from '@/theme'
+import { View } from 'react-native'
 
 export default function HomeScreen() {
   const { session, signOut } = useAuth()
   const email = session?.user.email ?? ''
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Text style={styles.brand}>UB Freight</Text>
-        <TouchableOpacity onPress={() => void signOut()} activeOpacity={0.7}>
-          <Text style={styles.signOut}>Sign out</Text>
-        </TouchableOpacity>
-      </View>
+    <Screen>
+      <AppHeader
+        title="UB Freight"
+        right={<Button title="Sign out" variant="ghost" onPress={() => void signOut()} style={{ minHeight: 0, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm }} />}
+      />
+      <View style={{ padding: spacing.lg, gap: spacing.xs }}>
+        <Text variant="title">Signed in</Text>
+        {email ? <Text variant="muted">{email}</Text> : null}
 
-      <View style={styles.body}>
-        <Text style={styles.hello}>Signed in</Text>
-        {email ? <Text style={styles.email}>{email}</Text> : null}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Conferences</Text>
-          <Text style={styles.cardText}>The conference module lands here next.</Text>
-        </View>
+        <Card style={{ marginTop: spacing.lg, gap: spacing.xs }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Text variant="heading">Conferences</Text>
+            <Badge label="Soon" tone="muted" />
+          </View>
+          <Text variant="muted">The conference module lands here next.</Text>
+        </Card>
       </View>
-    </SafeAreaView>
+    </Screen>
   )
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f8fafc' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    backgroundColor: '#fff',
-  },
-  brand: { fontSize: 18, fontWeight: '700', color: NAVY },
-  signOut: { fontSize: 14, fontWeight: '600', color: '#dc2626' },
-  body: { flex: 1, padding: 20, gap: 6 },
-  hello: { fontSize: 22, fontWeight: '700', color: '#111827' },
-  email: { fontSize: 14, color: '#6b7280' },
-  card: {
-    marginTop: 18,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    padding: 16,
-  },
-  cardTitle: { fontSize: 16, fontWeight: '600', color: NAVY },
-  cardText: { fontSize: 14, color: '#6b7280', marginTop: 4 },
-})
