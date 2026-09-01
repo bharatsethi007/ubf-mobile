@@ -1,4 +1,4 @@
-{
+﻿{
   "expo": {
     "name": "ubf-mobile",
     "slug": "ubf-mobile",
@@ -17,10 +17,11 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.ubfreight.ubfmobile"
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -37,6 +38,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ef7bfab4-f92b-40b4-9e6f-4711493749ee"
+      }
     }
   }
 }
