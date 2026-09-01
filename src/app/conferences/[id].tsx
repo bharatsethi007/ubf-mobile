@@ -128,7 +128,7 @@ export default function ConferenceDetailScreen() {
                   m={m}
                   onPress={() =>
                     router.push(
-                      `/meeting/${m.id}?name=${encodeURIComponent(m.agent_name ?? 'Agent')}&start=${m.start_time}&end=${m.end_time}` as Href,
+                      `/meeting/${m.id}?name=${encodeURIComponent(m.agent_name ?? 'Agent')}&start=${m.start_time}&end=${m.end_time}&status=${m.status}` as Href,
                     )
                   }
                 />

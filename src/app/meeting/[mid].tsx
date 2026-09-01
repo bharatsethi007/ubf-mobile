@@ -6,17 +6,20 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
-import { AppHeader, Card, Screen, Text } from '@/components/kit'
+import { AppHeader, Button, Card, Screen, Text } from '@/components/kit'
 import { colors, radius, spacing } from '@/theme'
 import { hhmm } from '@/lib/conferencesApi'
+import { updateMeetingStatus, type MeetingStatus } from '@/lib/conferencesApi'
 import MeetingPhotos from '@/components/MeetingPhotos'
 import MeetingRecorder from '@/components/MeetingRecorder'
+import { buildMeetingShareMessage } from '@/lib/meetingShare'
 import {
   LARGE_FIELDS,
   fetchMeetingNotes,
@@ -25,8 +28,21 @@ import {
   type NoteField,
 } from '@/lib/meetingNotesApi'
 
+const STATUS_OPTS: { key: MeetingStatus; label: string }[] = [
+  { key: 'upcoming', label: 'Upcoming' },
+  { key: 'completed', label: 'Done' },
+  { key: 'cancelled', label: 'Cancelled' },
+  { key: 'no_show', label: 'No-show' },
+]
+
 export default function MeetingScreen() {
-  const params = useLocalSearchParams<{ mid: string; name?: string; start?: string; end?: string }>()
+  const params = useLocalSearchParams<{
+    mid: string
+    name?: string
+    start?: string
+    end?: string
+    status?: string
+  }>()
   const router = useRouter()
   const mid = String(params.mid)
   const name = params.name ? String(params.name) : 'Agent'
@@ -34,6 +50,19 @@ export default function MeetingScreen() {
     params.start && params.end ? `${hhmm(String(params.start))}–${hhmm(String(params.end))}` : undefined
 
   const [fields, setFields] = useState<NoteField[]>([])
+  const [meetingStatus, setMeetingStatus] = useState<MeetingStatus>(
+    (params.status as MeetingStatus) || 'upcoming',
+  )
+
+  async function changeStatus(next: MeetingStatus) {
+    const prev = meetingStatus
+    setMeetingStatus(next)
+    try {
+      await updateMeetingStatus(mid, next)
+    } catch {
+      setMeetingStatus(prev)
+    }
+  }
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -110,6 +139,15 @@ export default function MeetingScreen() {
       .catch(() => {})
   }, [mid])
 
+  async function onShare() {
+    try {
+      const message = await buildMeetingShareMessage(mid, name)
+      await Share.share({ message })
+    } catch {
+      // user dismissed or nothing to share
+    }
+  }
+
   const statusText = status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : ''
 
   return (
@@ -138,6 +176,22 @@ export default function MeetingScreen() {
             contentContainerStyle={{ padding: spacing.xl, paddingTop: spacing.sm, gap: spacing.md }}
             keyboardShouldPersistTaps="handled"
           >
+            <View style={styles.statusRow}>
+              {STATUS_OPTS.map((o) => {
+                const on = meetingStatus === o.key
+                return (
+                  <Pressable
+                    key={o.key}
+                    onPress={() => void changeStatus(o.key)}
+                    style={[styles.statusPill, on && styles.statusPillOn]}
+                  >
+                    <Text style={[styles.statusPillText, on && styles.statusPillTextOn]}>
+                      {o.label}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
             {fields.map((f) => {
               const large = LARGE_FIELDS.has(f.label.trim())
               return (
@@ -177,6 +231,13 @@ export default function MeetingScreen() {
             </Pressable>
 
             <MeetingPhotos meetingId={mid} />
+
+            <Button
+              title="Share meeting"
+              variant="secondary"
+              onPress={() => void onShare()}
+              style={{ marginTop: spacing.sm }}
+            />
           </ScrollView>
         </KeyboardAvoidingView>
       )}
@@ -185,6 +246,19 @@ export default function MeetingScreen() {
 }
 
 const styles = StyleSheet.create({
+  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.xs },
+  statusPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+  },
+  statusPillOn: { backgroundColor: colors.navy, borderColor: colors.navy },
+  statusPillText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  statusPillTextOn: { color: '#fff' },
+
   fieldHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   labelInput: {
     flex: 1,

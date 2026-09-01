@@ -189,3 +189,11 @@ export async function listConferenceMeetings(conferenceId: string): Promise<Conf
     agent_name: r.agents?.name ?? r.manual_agent_name ?? null,
   }))
 }
+
+export async function updateMeetingStatus(meetingId: string, status: MeetingStatus): Promise<void> {
+  const { error } = await supabase
+    .from('conference_meetings')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', meetingId)
+  if (error) throw error
+}
