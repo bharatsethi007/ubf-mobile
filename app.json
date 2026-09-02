@@ -8,7 +8,16 @@
     "scheme": "ubfmobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/icon.png"
+      "bundleIdentifier": "com.ubfreight.conferences",
+      "icon": "./assets/icon.png",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "UBF uses the camera to photograph business cards and meeting moments.",
+        "NSMicrophoneUsageDescription": "UBF uses the microphone to record and transcribe agent meetings.",
+        "NSPhotoLibraryUsageDescription": "UBF uses your photos to attach them to agent meetings.",
+        "NSPhotoLibraryAddUsageDescription": "UBF saves photos you attach to meetings.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {

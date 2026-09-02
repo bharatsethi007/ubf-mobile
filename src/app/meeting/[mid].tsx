@@ -18,10 +18,13 @@ import { colors, radius, spacing } from '@/theme'
 import { hhmm } from '@/lib/conferencesApi'
 import { updateMeetingStatus, type MeetingStatus } from '@/lib/conferencesApi'
 import MeetingPhotos from '@/components/MeetingPhotos'
+import MeetingCards from '@/components/MeetingCards'
 import MeetingRecorder from '@/components/MeetingRecorder'
 import { shareMeeting } from '@/lib/meetingShare'
 import {
+  HALF_FIELDS,
   LARGE_FIELDS,
+  ONE_LINE_FIELDS,
   fetchMeetingNotes,
   newId,
   saveMeetingNotes,
@@ -201,7 +204,7 @@ export default function MeetingScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <ScrollView
-            contentContainerStyle={{ padding: spacing.xl, paddingTop: spacing.sm, gap: spacing.md }}
+            contentContainerStyle={{ padding: spacing.xl, paddingTop: spacing.sm, paddingBottom: 56, gap: spacing.md }}
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.statusRow}>
@@ -220,33 +223,42 @@ export default function MeetingScreen() {
                 )
               })}
             </View>
-            {fields.map((f) => {
-              const large = LARGE_FIELDS.has(f.label.trim())
-              return (
-                <Card key={f.id} style={{ gap: spacing.xs }}>
-                  <View style={styles.fieldHead}>
+            <View style={styles.fieldsWrap}>
+              {fields.map((f) => {
+                const label = f.label.trim()
+                const large = LARGE_FIELDS.has(label)
+                const half = HALF_FIELDS.has(label)
+                const oneLine = ONE_LINE_FIELDS.has(label)
+                return (
+                  <View key={f.id} style={[styles.fieldCard, half ? styles.fieldHalf : styles.fieldFull]}>
+                    <View style={styles.fieldHead}>
+                      <TextInput
+                        style={styles.labelInput}
+                        value={f.label}
+                        onChangeText={(t) => setLabel(f.id, t)}
+                        placeholder="Field name"
+                        placeholderTextColor={colors.textSubtle}
+                      />
+                      <Pressable onPress={() => remove(f.id)} hitSlop={10}>
+                        <Ionicons name="close" size={16} color={colors.textSubtle} />
+                      </Pressable>
+                    </View>
                     <TextInput
-                      style={styles.labelInput}
-                      value={f.label}
-                      onChangeText={(t) => setLabel(f.id, t)}
-                      placeholder="Field name"
+                      style={[
+                        styles.valueInput,
+                        large && styles.valueInputLarge,
+                        oneLine && styles.valueInputOneLine,
+                      ]}
+                      value={f.value}
+                      onChangeText={(t) => setValue(f.id, t)}
+                      placeholder="—"
                       placeholderTextColor={colors.textSubtle}
+                      multiline={!oneLine}
                     />
-                    <Pressable onPress={() => remove(f.id)} hitSlop={10}>
-                      <Ionicons name="close" size={18} color={colors.textSubtle} />
-                    </Pressable>
                   </View>
-                  <TextInput
-                    style={[styles.valueInput, large && styles.valueInputLarge]}
-                    value={f.value}
-                    onChangeText={(t) => setValue(f.id, t)}
-                    placeholder="—"
-                    placeholderTextColor={colors.textSubtle}
-                    multiline
-                  />
-                </Card>
-              )
-            })}
+                )
+              })}
+            </View>
 
             <Pressable
               onPress={addField}
@@ -257,6 +269,8 @@ export default function MeetingScreen() {
                 Add field
               </Text>
             </Pressable>
+
+            <MeetingCards meetingId={mid} />
 
             <MeetingPhotos meetingId={mid} />
 
@@ -288,6 +302,19 @@ const styles = StyleSheet.create({
   statusPillTextOn: { color: '#fff' },
 
   fieldHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+
+  fieldsWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  fieldCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    gap: spacing.xs,
+  },
+  fieldFull: { width: '100%' },
+  fieldHalf: { width: '48.5%' },
   labelInput: {
     flex: 1,
     fontSize: 11,
@@ -304,6 +331,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   valueInputLarge: { minHeight: 160, textAlignVertical: 'top' },
+  valueInputOneLine: { minHeight: 0 },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',

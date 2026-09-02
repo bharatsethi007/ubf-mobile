@@ -6,15 +6,14 @@ export const DEFAULT_FIELD_LABELS = [
   'Key business',
   'Area of business',
   'Strengths',
-  'Total staff',
-  'Total sales personnel',
-  'Branch locations',
   'Discussion',
   'Remarks',
   'Follow up',
 ] as const
 
 export const LARGE_FIELDS = new Set<string>(['Discussion'])
+export const HALF_FIELDS = new Set<string>(['Key business', 'Area of business'])
+export const ONE_LINE_FIELDS = new Set<string>(['Strengths'])
 
 export function newId(): string {
   return `f_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`

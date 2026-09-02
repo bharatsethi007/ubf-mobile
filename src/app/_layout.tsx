@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useColorScheme } from 'react-native'
 
 import { AuthProvider, useAuth } from '@/lib/auth'
+import BrandScreen from '@/components/BrandScreen'
 
 function useProtectedRoute() {
   const { session, staff, loading } = useAuth()
@@ -21,6 +22,7 @@ function useProtectedRoute() {
 
 function RootNavigator() {
   const colorScheme = useColorScheme()
+  const { loading } = useAuth()
   useProtectedRoute()
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -28,6 +30,7 @@ function RootNavigator() {
         <Stack.Screen name="index" />
         <Stack.Screen name="login" />
       </Stack>
+      {loading ? <BrandScreen /> : null}
     </ThemeProvider>
   )
 }

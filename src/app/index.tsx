@@ -7,6 +7,8 @@ import { Image } from 'expo-image'
 import { useAuth } from '@/lib/auth'
 import { AppHeader, Avatar, Badge, Button, Card, IconButton, Screen, Text } from '@/components/kit'
 import { colors, radius, shadows, spacing } from '@/theme'
+import BrandScreen from '@/components/BrandScreen'
+import { useBrandLoading } from '@/lib/useBrandLoading'
 import {
   conferenceBucket,
   formatDateRange,
@@ -28,6 +30,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(false)
+  const showBrand = useBrandLoading(loading)
 
   const load = useCallback(async () => {
     try {
@@ -82,9 +85,13 @@ export default function HomeScreen() {
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={colors.navy} />
-        </View>
+        showBrand ? (
+          <BrandScreen />
+        ) : (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator color={colors.navy} />
+          </View>
+        )
       ) : (
         <ScrollView
           contentContainerStyle={{ padding: spacing.xl, paddingTop: spacing.sm, gap: spacing.xl }}

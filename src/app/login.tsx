@@ -1,8 +1,10 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,8 +14,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { useAuth } from '@/lib/auth'
-
-const NAVY = '#0A2472'
 
 export default function LoginScreen() {
   const { signIn } = useAuth()
@@ -41,14 +41,22 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.container}>
-          <Text style={styles.brand}>UB Freight</Text>
-          <Text style={styles.subtitle}>Staff sign in</Text>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Image
+            source={require('../../assets/splash-icon.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+
+          <Text style={styles.heading}>Staff sign in</Text>
 
           <View style={styles.form}>
-            <Text style={styles.label}>Email</Text>
             <TextInput
               style={styles.input}
               value={email}
@@ -57,19 +65,17 @@ export default function LoginScreen() {
               autoCorrect={false}
               keyboardType="email-address"
               inputMode="email"
-              placeholder="you@ubfreight.co.nz"
-              placeholderTextColor="#9ca3af"
+              placeholder="Email"
+              placeholderTextColor="rgba(255,255,255,0.5)"
               returnKeyType="next"
             />
-
-            <Text style={styles.label}>Password</Text>
             <TextInput
               style={styles.input}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              placeholder="********"
-              placeholderTextColor="#9ca3af"
+              placeholder="Password"
+              placeholderTextColor="rgba(255,255,255,0.5)"
               returnKeyType="go"
               onSubmitEditing={onSubmit}
             />
@@ -83,43 +89,57 @@ export default function LoginScreen() {
               activeOpacity={0.85}
             >
               {busy ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color="#012652" />
               ) : (
-                <Text style={styles.buttonText}>Sign in</Text>
+                <Text style={styles.buttonText}>Sign In</Text>
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
+  safe: { flex: 1, backgroundColor: '#012652' },
   flex: { flex: 1 },
-  container: { flex: 1, justifyContent: 'center', paddingHorizontal: 24 },
-  brand: { fontSize: 30, fontWeight: '700', color: NAVY, textAlign: 'center' },
-  subtitle: { fontSize: 15, color: '#6b7280', textAlign: 'center', marginTop: 4, marginBottom: 28 },
-  form: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', color: '#374151', marginTop: 10 },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 28,
+    paddingTop: 48,
+    paddingBottom: 32,
+    alignItems: 'stretch',
+  },
+  logo: { width: 180, height: 180, alignSelf: 'center' },
+  heading: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 28,
+    opacity: 0.9,
+  },
+  form: { gap: 12 },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
     fontSize: 16,
-    color: '#111827',
+    color: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  error: { color: '#dc2626', fontSize: 13, marginTop: 10 },
+  error: { color: '#FCA5A5', fontSize: 13, marginTop: 2 },
   button: {
-    backgroundColor: NAVY,
-    borderRadius: 10,
-    paddingVertical: 14,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 8,
   },
   buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  buttonText: { color: '#012652', fontSize: 16, fontWeight: '700' },
 })

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Image } from 'expo-image'
@@ -26,6 +26,17 @@ const STATUS_TONE: Record<MeetingStatus, { label: string; tone: 'muted' | 'succe
   no_show: { label: 'No-show', tone: 'warning' },
 }
 
+type Display = { label: string; tone: 'muted' | 'success' | 'danger' | 'warning'; live: boolean }
+
+function meetingDisplay(m: ConferenceMeeting): Display {
+  if (m.status !== 'upcoming') return { ...STATUS_TONE[m.status], live: false }
+  const now = new Date()
+  const start = new Date(`${m.meeting_date}T${m.start_time}`)
+  const end = new Date(`${m.meeting_date}T${m.end_time}`)
+  if (now >= start && now <= end) return { label: 'Now', tone: 'success', live: true }
+  return { label: 'Upcoming', tone: 'muted', live: false }
+}
+
 function pillLabel(dateISO: string): string {
   const d = new Date(`${dateISO}T00:00:00`)
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -40,6 +51,12 @@ export default function ConferenceDetailScreen() {
   const [day, setDay] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [, setTick] = useState(0)
+
+  useEffect(() => {
+    const i = setInterval(() => setTick((t) => t + 1), 30000)
+    return () => clearInterval(i)
+  }, [])
 
   const loadData = useCallback(() => {
     setLoading(true)
@@ -159,13 +176,13 @@ function MeetingRow({ m, onPress }: { m: ConferenceMeeting; onPress: () => void 
       </View>
     )
   }
-  const s = STATUS_TONE[m.status]
+  const d = meetingDisplay(m)
   const name = m.agent_name ?? 'Unassigned'
   return (
-    <Card padded={false} onPress={onPress}>
+    <Card padded={false} onPress={onPress} style={d.live ? styles.meetingLive : undefined}>
       <View style={styles.meetingInner}>
         <View style={styles.timeCol}>
-          <Text style={styles.timeText}>{hhmm(m.start_time)}</Text>
+          <Text style={[styles.timeText, d.live && styles.timeTextLive]}>{hhmm(m.start_time)}</Text>
           <Text variant="small">{hhmm(m.end_time)}</Text>
         </View>
         <View style={styles.divider} />
@@ -175,7 +192,14 @@ function MeetingRow({ m, onPress }: { m: ConferenceMeeting; onPress: () => void 
             {name}
           </Text>
         </View>
-        <Badge label={s.label} tone={s.tone} />
+        {d.live ? (
+          <View style={styles.livePill}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>Now</Text>
+          </View>
+        ) : (
+          <Badge label={d.label} tone={d.tone} />
+        )}
       </View>
     </Card>
   )
@@ -203,6 +227,19 @@ const styles = StyleSheet.create({
   todayDotOn: { backgroundColor: '#fff' },
 
   meetingInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md },
+  meetingLive: { borderColor: colors.navy, borderWidth: 1.5 },
+  livePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.navy,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#34D399' },
+  liveText: { color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.4 },
+  timeTextLive: { color: colors.navy },
   timeCol: { width: 44, alignItems: 'center' },
   timeText: { fontSize: 15, fontWeight: '700', color: colors.navy },
   divider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: colors.border },
