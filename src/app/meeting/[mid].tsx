@@ -2,11 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   ActivityIndicator,
+  AppState,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   TextInput,
   View,
@@ -19,7 +19,7 @@ import { hhmm } from '@/lib/conferencesApi'
 import { updateMeetingStatus, type MeetingStatus } from '@/lib/conferencesApi'
 import MeetingPhotos from '@/components/MeetingPhotos'
 import MeetingRecorder from '@/components/MeetingRecorder'
-import { buildMeetingShareMessage } from '@/lib/meetingShare'
+import { shareMeeting } from '@/lib/meetingShare'
 import {
   LARGE_FIELDS,
   fetchMeetingNotes,
@@ -64,27 +64,31 @@ export default function MeetingScreen() {
     }
   }
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savedJson = useRef('')
+  const fieldsRef = useRef<NoteField[]>(fields)
+  fieldsRef.current = fields
 
-  useEffect(() => {
-    let active = true
+  const loadNotes = useCallback(() => {
+    setLoading(true)
+    setLoadError(false)
     fetchMeetingNotes(mid)
       .then((f) => {
-        if (!active) return
         setFields(f)
         savedJson.current = JSON.stringify(f)
       })
-      .catch(() => {})
-      .finally(() => {
-        if (active) setLoading(false)
-      })
+      .catch(() => setLoadError(true))
+      .finally(() => setLoading(false))
+  }, [mid])
+
+  useEffect(() => {
+    loadNotes()
     return () => {
-      active = false
       if (timer.current) clearTimeout(timer.current)
     }
-  }, [mid])
+  }, [loadNotes])
 
   const persist = useCallback(
     async (next: NoteField[]) => {
@@ -94,11 +98,27 @@ export default function MeetingScreen() {
         savedJson.current = JSON.stringify(next)
         setStatus('saved')
       } catch {
-        setStatus('idle')
+        setStatus('idle') // stays dirty; retried on background/foreground/leave
       }
     },
     [mid],
   )
+
+  const flush = useCallback(() => {
+    if (JSON.stringify(fieldsRef.current) !== savedJson.current) void persist(fieldsRef.current)
+  }, [persist])
+
+  // Save immediately when the app backgrounds, returns to foreground (retry a
+  // failed offline save), or the screen is left — so a note is never lost.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'background' || s === 'inactive' || s === 'active') flush()
+    })
+    return () => {
+      sub.remove()
+      flush()
+    }
+  }, [flush])
 
   const queueSave = useCallback(
     (next: NoteField[]) => {
@@ -141,14 +161,15 @@ export default function MeetingScreen() {
 
   async function onShare() {
     try {
-      const message = await buildMeetingShareMessage(mid, name)
-      await Share.share({ message })
+      await shareMeeting(mid, name)
     } catch {
       // user dismissed or nothing to share
     }
   }
 
-  const statusText = status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : ''
+  const dirty = JSON.stringify(fields) !== savedJson.current
+  const statusText =
+    status === 'saving' ? 'Saving…' : dirty ? 'Unsaved' : status === 'saved' ? 'Saved' : ''
 
   return (
     <Screen>
@@ -166,6 +187,13 @@ export default function MeetingScreen() {
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={colors.navy} />
+        </View>
+      ) : loadError ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: spacing.md }}>
+          <Text variant="muted" style={{ textAlign: 'center' }}>
+            Couldn&apos;t load notes. Check your connection.
+          </Text>
+          <Button title="Retry" variant="secondary" onPress={loadNotes} />
         </View>
       ) : (
         <KeyboardAvoidingView

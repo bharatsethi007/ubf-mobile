@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 
 import { useAuth } from '@/lib/auth'
-import { AppHeader, Avatar, Badge, Card, IconButton, Screen, Text } from '@/components/kit'
+import { AppHeader, Avatar, Badge, Button, Card, IconButton, Screen, Text } from '@/components/kit'
 import { colors, radius, shadows, spacing } from '@/theme'
 import {
   conferenceBucket,
@@ -27,12 +27,14 @@ export default function HomeScreen() {
   const [items, setItems] = useState<ConferenceCard[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState(false)
 
   const load = useCallback(async () => {
     try {
       setItems(await listConferences())
+      setError(false)
     } catch {
-      // surfaced on the empty state
+      setError(true)
     }
   }, [])
 
@@ -95,6 +97,11 @@ export default function HomeScreen() {
               <Text variant="label">{isLive ? 'Happening now' : 'Next up'}</Text>
               <HeroCard c={featured} live={isLive} onPress={() => router.push(`/conferences/${featured.id}`)} />
             </View>
+          ) : error ? (
+            <Card style={{ gap: spacing.md, alignItems: 'flex-start' }}>
+              <Text variant="muted">Couldn&apos;t load conferences. Check your connection.</Text>
+              <Button title="Retry" variant="secondary" onPress={() => void load()} />
+            </Card>
           ) : (
             <Card>
               <Text variant="muted">No conferences yet.</Text>

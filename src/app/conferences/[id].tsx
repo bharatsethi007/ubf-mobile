@@ -3,7 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Image } from 'expo-image'
 
-import { AppHeader, Avatar, Badge, Card, Screen, Text } from '@/components/kit'
+import { AppHeader, Avatar, Badge, Button, Card, Screen, Text } from '@/components/kit'
 import { colors, radius, spacing } from '@/theme'
 import {
   conferenceDays,
@@ -17,6 +17,7 @@ import {
   type MeetingStatus,
 } from '@/lib/conferencesApi'
 import { scheduleMeetingReminders } from '@/lib/meetingNotifications'
+import { maybePromptBatteryOptimization } from '@/lib/batteryPrompt'
 
 const STATUS_TONE: Record<MeetingStatus, { label: string; tone: 'muted' | 'success' | 'danger' | 'warning' }> = {
   upcoming: { label: 'Upcoming', tone: 'muted' },
@@ -38,27 +39,28 @@ export default function ConferenceDetailScreen() {
   const [meetings, setMeetings] = useState<ConferenceMeeting[]>([])
   const [day, setDay] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+
+  const loadData = useCallback(() => {
+    setLoading(true)
+    Promise.all([fetchConference(String(id)), listConferenceMeetings(String(id))])
+      .then(([c, m]) => {
+        setConf(c)
+        setMeetings(m)
+        setLoadError(false)
+        if (c) setDay((prev) => prev || defaultActiveDay(c.start_date, c.end_date))
+        void scheduleMeetingReminders(m).then((n) => {
+          if (n > 0) void maybePromptBatteryOptimization()
+        })
+      })
+      .catch(() => setLoadError(true))
+      .finally(() => setLoading(false))
+  }, [id])
 
   useFocusEffect(
     useCallback(() => {
-      let active = true
-      setLoading(true)
-      Promise.all([fetchConference(String(id)), listConferenceMeetings(String(id))])
-        .then(([c, m]) => {
-          if (!active) return
-          setConf(c)
-          setMeetings(m)
-          if (c) setDay((prev) => prev || defaultActiveDay(c.start_date, c.end_date))
-          void scheduleMeetingReminders(m)
-        })
-        .catch(() => {})
-        .finally(() => {
-          if (active) setLoading(false)
-        })
-      return () => {
-        active = false
-      }
-    }, [id]),
+      loadData()
+    }, [loadData]),
   )
 
   const days = conf ? conferenceDays(conf.start_date, conf.end_date) : []
@@ -74,8 +76,11 @@ export default function ConferenceDetailScreen() {
           <ActivityIndicator color={colors.navy} />
         </View>
       ) : !conf ? (
-        <View style={{ padding: spacing.xl }}>
-          <Text variant="muted">Conference not found.</Text>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: spacing.md }}>
+          <Text variant="muted" style={{ textAlign: 'center' }}>
+            {loadError ? "Couldn't load this conference. Check your connection." : 'Conference not found.'}
+          </Text>
+          {loadError ? <Button title="Retry" variant="secondary" onPress={loadData} /> : null}
         </View>
       ) : (
         <>

@@ -1,10 +1,11 @@
+import Share from 'react-native-share'
+import { cacheDirectory, downloadAsync } from 'expo-file-system/legacy'
 import { supabase } from './supabase'
 import { parseFields } from './meetingNotesApi'
 
-export async function buildMeetingShareMessage(
-  meetingId: string,
-  agentName: string,
-): Promise<string> {
+type ShareData = { message: string; photoUrls: string[] }
+
+async function buildShareData(meetingId: string, agentName: string): Promise<ShareData> {
   const [{ data: m }, { data: photos }] = await Promise.all([
     supabase.from('conference_meetings').select('notes_fields, notes').eq('id', meetingId).maybeSingle(),
     supabase
@@ -20,9 +21,37 @@ export async function buildMeetingShareMessage(
     ((m?.notes as string | null) ?? '').trim() ||
     '(no discussion recorded)'
 
-  const urls = (photos ?? []).map((p) => p.image_url as string).filter(Boolean)
+  const photoUrls = (photos ?? []).map((p) => p.image_url as string).filter(Boolean)
+  const message = `Meeting notes — ${agentName}\n\n${discussion}`
+  return { message, photoUrls }
+}
 
-  const parts = [`Meeting notes — ${agentName}`, '', discussion]
-  if (urls.length) parts.push('', 'Photos:', ...urls)
-  return parts.join('\n')
+async function downloadPhotos(meetingId: string, urls: string[]): Promise<string[]> {
+  const local: string[] = []
+  for (let i = 0; i < urls.length; i++) {
+    try {
+      const ext = (urls[i].split('.').pop() ?? 'jpg').split('?')[0].toLowerCase()
+      const dest = `${cacheDirectory}share-${meetingId}-${i}.${ext}`
+      const res = await downloadAsync(urls[i], dest)
+      local.push(res.uri)
+    } catch {
+      // skip an unreachable photo
+    }
+  }
+  return local
+}
+
+export async function shareMeeting(meetingId: string, agentName: string): Promise<void> {
+  const { message, photoUrls } = await buildShareData(meetingId, agentName)
+  const urls = await downloadPhotos(meetingId, photoUrls)
+  try {
+    await Share.open({
+      title: `Meeting — ${agentName}`,
+      message,
+      urls: urls.length ? urls : undefined,
+      failOnCancel: false,
+    })
+  } catch {
+    // user cancelled
+  }
 }

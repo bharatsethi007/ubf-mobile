@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Alert, Animated, Modal, Pressable, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, Alert, Animated, AppState, Modal, Pressable, StyleSheet, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import {
   RecordingPresets,
@@ -85,6 +85,19 @@ export default function MeetingRecorder({
 
   useEffect(() => () => clearGrace(), [])
 
+  // If the app was backgrounded mid-recording and the OS interrupted capture,
+  // finalize on return so the audio we did capture is saved, not lost.
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active' && phaseRef.current === 'recording' && !recorder.isRecording) {
+        void finalize()
+      }
+    })
+    return () => sub.remove()
+  }, [recorder, finalize])
+
   async function start() {
     const perm = await requestRecordingPermissionsAsync()
     if (!perm.granted) {
@@ -92,7 +105,12 @@ export default function MeetingRecorder({
       return
     }
     try {
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true })
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+        shouldRouteThroughEarpiece: false,
+        interruptionMode: 'doNotMix',
+      })
       await recorder.prepareToRecordAsync()
       recorder.record()
       nextPause.current = PAUSE_AFTER_SEC
