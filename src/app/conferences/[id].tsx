@@ -16,6 +16,7 @@ import {
   type ConferenceMeeting,
   type MeetingStatus,
 } from '@/lib/conferencesApi'
+import { scheduleMeetingReminders } from '@/lib/meetingNotifications'
 
 const STATUS_TONE: Record<MeetingStatus, { label: string; tone: 'muted' | 'success' | 'danger' | 'warning' }> = {
   upcoming: { label: 'Upcoming', tone: 'muted' },
@@ -48,6 +49,7 @@ export default function ConferenceDetailScreen() {
           setConf(c)
           setMeetings(m)
           if (c) setDay((prev) => prev || defaultActiveDay(c.start_date, c.end_date))
+          void scheduleMeetingReminders(m)
         })
         .catch(() => {})
         .finally(() => {

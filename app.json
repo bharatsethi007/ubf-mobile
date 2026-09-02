@@ -4,18 +4,16 @@
     "slug": "ubf-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/icon.png",
     "scheme": "ubfmobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/icon.png"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#012652",
+        "foregroundImage": "./assets/adaptive-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.ubfreight.ubfmobile"
@@ -29,9 +27,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#012652",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200
         }
       ],
       [
@@ -46,7 +44,8 @@
         {
           "microphonePermission": "UBF uses the microphone to record and transcribe agent meetings."
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,
