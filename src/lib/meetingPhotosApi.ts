@@ -1,7 +1,6 @@
 import { decode } from 'base64-arraybuffer'
 import { supabase } from './supabase'
-
-const BUCKET = 'conferences'
+import { fileKey, publicUrl, uploadFile } from './fileStore'
 
 export type MeetingPhoto = {
   id: string
@@ -27,12 +26,10 @@ export async function uploadMeetingPhoto(
   ext: string,
 ): Promise<MeetingPhoto> {
   const path = `meeting-photos/${meetingId}/${Date.now()}.${ext || 'jpg'}`
-  const { error: upErr } = await supabase.storage
-    .from(BUCKET)
-    .upload(path, decode(base64), { contentType: mime || 'image/jpeg', upsert: true })
-  if (upErr) throw upErr
+  const key = fileKey('conferences', path)
+  await uploadFile(key, decode(base64), mime || 'image/jpeg')
 
-  const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path)
+  const pub = { publicUrl: publicUrl(key) }
 
   const { data: existing } = await supabase
     .from('meeting_photos')
